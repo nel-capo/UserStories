@@ -1,0 +1,249 @@
+<!DOCTYPE html>
+<script src="https://unpkg.com/@supabase/supabase-js@2"></script>
+<script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+<html lang="en">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Crowe User Story Tracker</title>
+  <link rel="stylesheet" href="styles.css">
+</head>
+<body>
+  <header>
+    <div class="inner container">
+      <div style="display:flex; align-items:center; gap:12px">
+        <span class="brand-dot" aria-hidden="true"></span>
+        <h1>Crowe User Story Tracker</h1>
+      </div>
+      <div class="header-utils">
+        <div class="badge">Sprint 3</div>
+        <div class="notify" id="notify">
+          <button class="notify-btn" id="notifyBtn" title="Notifications">🔔</button>
+          <span class="notify-dot" id="notifyDot">0</span>
+          <div class="notify-list" id="notifyList"></div>
+        </div>
+      </div>
+    </div>
+  </header>
+
+  <main class="container" id="app">
+    <!-- Summary -->
+    <section class="panel" aria-labelledby="summaryTitle" id="summaryPanel">
+      <div style="display:flex; align-items:center; gap:10px; justify-content:space-between; margin-bottom:12px">
+        <h2 id="summaryTitle" style="margin:0; font-size:18px">Progress Overview</h2>
+
+        <!-- Dynamic filter builder -->
+        <div class="filter-builder" id="filterBuilder" style="max-width:760px; width:100%">
+          <div id="filtersWrap"></div>
+          <div class="add-filter">
+            <select id="addFilterSelect">
+              <option value="">Add filter…</option>
+              <!-- options populated by JS -->
+            </select>
+            <button class="btn" id="addFilterBtn" type="button">Add</button>
+            <span class="spacer" style="flex:1"></span>
+            <button class="btn" id="clearFilters" type="button">Clear</button>
+            <button class="btn" id="exportCsv" type="button" title="Export all stories to CSV">Export CSV</button>
+            <label class="btn" title="Import stories from CSV">
+              Import CSV
+              <input id="importCsv" type="file" accept=".csv,text/csv" hidden>
+            </label>
+          </div>
+        </div>
+      </div>
+
+      <div class="summary" id="summaryCards" aria-live="polite"></div>
+      <div class="progress-wrap">
+        <div class="progress" aria-hidden="true">
+          <div class="seg review" id="seg-review" style="width:0%"></div>
+          <div class="seg ready" id="seg-ready" style="width:0%"></div>
+          <div class="seg failed" id="seg-failed" style="width:0%"></div>
+          <div class="seg passed" id="seg-passed" style="width:0%"></div>
+        </div>
+        <div class="legend">
+          <span><span class="dot" style="background:#5f6a7d"></span>Under Review</span>
+          <span><span class="dot" style="background:#0b5cab"></span>Ready for testing</span>
+          <span><span class="dot" style="background:#ba0517"></span>Failed QC</span>
+          <span><span class="dot" style="background:#2e844a"></span>Passed QC</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Create form (collapsible) -->
+    <details class="collapsible" id="createPanel" close>
+      <summary>
+        <h2 id="createTitle" style="margin:0; font-size:18px">Add a User Story</h2>
+        <svg class="chev" width="18" height="18" viewBox="0 0 24 24" fill="none" xmlns="http://www.w3.org/2000/svg"><path d="M8.59 16.59L13.17 12 8.59 7.41 10 6l6 6-6 6-1.41-1.41z" fill="currentColor"/></svg>
+      </summary>
+      <form id="createForm" novalidate>
+        <div class="field" style="grid-column:span 3">
+          <label for="regressionItem">Regression Item # <span class="muted">(number)</span></label>
+          <input id="regressionItem" name="regressionItem" type="number" inputmode="numeric" min="0" placeholder="e.g., 101" required>
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label for="reportedDate">Reported Date</label>
+          <input id="reportedDate" name="reportedDate" type="date" required>
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label for="priority">Priority Level</label>
+          <select id="priority" name="priority" required>
+            <option>Medium</option>
+            <option>Low</option>
+            <option>High</option>
+          </select>
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label for="status">Status</label>
+          <select id="status" name="status" required>
+            <option>Under Review</option>
+            <option>Ready for testing</option>
+            <option>Failed QC</option>
+            <option>Passed QC</option>
+          </select>
+        </div>
+
+        <div class="field" style="grid-column:span 3">
+          <label for="reportedBy">Reported By</label>
+          <input id="reportedBy" name="reportedBy" type="text" placeholder="Your name" required>
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label for="owner">Crowe Owner</label>
+          <input id="owner" name="owner" type="text" placeholder="Owner" required>
+        </div>
+
+        <div class="field" style="grid-column:span 3">
+          <label for="personas">Relevant Personas</label>
+          <input id="personas" name="personas" type="text" placeholder="e.g., Auditor, QA Analyst">
+        </div>
+        <div class="field" style="grid-column:span 3">
+          <label for="loe">LOE <span class="muted">(number)</span></label>
+          <input id="loe" name="loe" type="number" inputmode="decimal" min="0" step="0.5" placeholder="e.g., 3">
+        </div>
+
+        <!-- Long text fields -->
+        <div class="field" style="grid-column:span 12">
+          <label for="description">Description</label>
+          <textarea id="description" class="longtext" required placeholder="Describe the user story..."></textarea>
+        </div>
+        <div class="field" style="grid-column:span 12">
+          <label for="testScript">Test Script</label>
+          <textarea id="testScript" class="longtext" placeholder="Test steps, data, expected results..."></textarea>
+        </div>
+        <div class="field" style="grid-column:span 12">
+          <label for="acceptance">Acceptance Criteria</label>
+          <textarea id="acceptance" class="longtext" required placeholder="List acceptance criteria..."></textarea>
+        </div>
+
+        <div class="actions">
+          <button class="btn brand" type="submit" id="addBtn" title="Add user story">Add User Story</button>
+          <button class="btn" type="reset">Reset</button>
+          <span class="muted" style="margin-left:auto">Tip: use @mentions in long text fields to notify teammates.</span>
+        </div>
+        <div id="toastWrap" class="toast-wrap"></div>
+      </form>
+    </details>
+
+    <!-- List (with FS split area) -->
+    <section class="panel" style="margin-top:16px" aria-labelledby="listTitle" id="listPanel">
+      <div style="display:flex; align-items:center; gap:10px; justify-content:space-between; border-bottom: 2px solid #e9e9e9;margin-bottom:6px">
+        <h2 id="listTitle" style="margin:0; font-size:18px">User Stories</h2>
+        <div style="display:flex; gap:8px; align-items:center">
+          <label class="muted" for="sortField">Sort:</label>
+          <select id="sortField" title="Select field to sort">
+            <option value="">—</option>
+            <option value="regressionItem">Regression #</option>
+            <option value="reportedDate">Reported Date</option>
+            <option value="priority">Priority</option>
+            <option value="status">Status</option>
+            <option value="owner">Owner</option>
+            <option value="reportedBy">Reported By</option>
+            <option value="personas">Personas</option>
+            <option value="loe">LOE</option>
+            <option value="createdAt">Created</option>
+            <option value="updatedAt">Updated</option>
+          </select>
+          <button class="btn" type="button" id="sortDirBtn" title="Toggle sort direction">▲ Asc</button>
+          <div class="muted" id="rowCount" style="margin-left:8px">0 items</div>
+          <button class="btn" id="fsTableBtn" type="button" title="Toggle full screen">Full Screen</button>
+        </div>
+      </div>
+
+      <div class="fs-split">
+        <div class="fs-left">
+          <div class="table-scroll" id="tableScroll">
+            <div class="hover-zone left" aria-hidden="true"></div>
+            <div class="hover-zone right" aria-hidden="true"></div>
+            <div class="table-wrap" id="tableWrap">
+              <table class="table" aria-describedby="listTitle">
+                <thead class="thead">
+                  <tr>
+                    <th><button class="btn ghost" data-sort="regressionItem" title="Sort by Regression Item #">Reg. #</button></th>
+                    <th><button class="btn ghost" data-sort="reportedDate" title="Sort by Reported Date">Reported</button></th>
+                    <th class="col-desc">Description</th>
+                    <th class="col-acc">Acceptance Criteria</th>
+                    <th class="col-test">Test Script</th>
+                    <th><button class="btn ghost" data-sort="priority" title="Sort by Priority">Priority</button></th>
+                    <th><button class="btn ghost" data-sort="status" title="Sort by Status">Status</button></th>
+                    <th>Owner</th>
+                    <th>Reported By</th>
+                    <th>Personas</th>
+                    <th><button class="btn ghost" data-sort="loe" title="Sort by LOE">LOE</button></th>
+                    <th class="col-comments">Comments</th>
+                    <th class="nowrap">Actions</th>
+                  </tr>
+                </thead>
+                <tbody id="tbody"></tbody>
+              </table>
+            </div>
+          </div>
+          <div id="emptyState" class="muted" style="display:none; padding:10px 2px">No user stories yet. Add one above to get started.</div>
+        </div>
+
+        <!-- Full Screen detail pane -->
+        <aside id="fsDetailPane"></aside>
+      </div>
+    </section>
+
+    <!-- Detail View (moved into FS pane when in fullscreen) -->
+    <section id="detailView" class="panel" aria-labelledby="detailTitle">
+      <div style="display:flex; align-items:center; justify-content:space-between; gap:10px; margin-bottom:8px">
+        <div style="display:flex; align-items:center; gap:10px">
+          <button class="btn" id="backToList" type="button">← Back</button>
+          <h2 id="detailTitle" style="margin:0">User Story</h2>
+        </div>
+        <div>
+          <button class="btn danger" id="detailDelete" type="button">Delete</button>
+        </div>
+      </div>
+      <div id="detailBody"></div>
+
+      <section class="panel comments-panel" id="commentsPanel" aria-labelledby="commentsTitle">
+        <h3 id="commentsTitle" style="margin:0 0 8px 0">Comments</h3>
+        <div id="commentsThread"></div>
+        <form id="commentForm" style="display:grid; grid-template-columns: 1fr; gap:8px; margin-top:10px">
+          <input id="commentAuthor" type="hidden">
+          <input type="hidden" id="commentParentId">
+          <textarea id="commentText" class="longtext" placeholder="Write a comment… Use @ to notify, e.g. @name or @email" required></textarea>
+          <div style="display:flex; gap:8px; align-items:center">
+            <button class="btn brand" type="submit">Post comment</button>
+            <button class="btn" type="button" id="cancelReplyBtn">Cancel reply</button>
+          </div>
+          <div id="toastWrap" class="toast-wrap"></div>
+        </form>
+      </section>
+    </section>
+  </main>
+
+  <!-- Scripts -->
+  <script src="storage.js"></script>
+  <script src="users.js"></script>
+  <script src="device.js"></script>
+  <script src="app.js"></script>
+  <!-- somewhere near the end of <body> -->
+  
+
+
+</body>
+</html>
+
+
