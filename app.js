@@ -525,7 +525,6 @@
         renderDetail(id);
       } else {
         els.detailView.style.display='block';
-        els.summaryPanel.style.display='none';
         els.createPanel.style.display='none';
         renderDetail(id);
       }
@@ -1054,3 +1053,4 @@ function attachMentionAutocomplete(textarea){
 // For comments box:
 const cmt = document.getElementById('commentText');
 if (cmt) attachMentionAutocomplete(cmt);
+
