@@ -182,6 +182,7 @@ textarea.detail-long{max-height:500px;}
 #listPanel:fullscreen{
     margin:0; border-radius:0; width:100vw; height:100vh;
     display:flex; flex-direction:column;
+    overflow: auto;
 }
 #listPanel:fullscreen .fs-split{
     display:grid;  gap:12px;
@@ -233,3 +234,4 @@ textarea.detail-long{max-height:500px;}
     .actions-col{justify-content:flex-end}
     .kv{grid-template-columns: 1fr}
 }
+
