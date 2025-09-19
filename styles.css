@@ -68,7 +68,7 @@ h1{font-size: clamp(20px, 3vw, 28px); margin:0; letter-spacing:.2px}
 .legend .dot{width:10px; height:10px; border-radius:999px; display:inline-block; margin-right:6px}
 
 /* Collapsible create panel */
-details.collapsible{border:1px solid var(--border); border-radius:var(--radius); background: var(--panel)}
+details.collapsible{border:1px solid var(--border); border-radius:var(--radius); background: var(--panel); margin-top: 15px;}
 details.collapsible>summary{list-style:none; cursor:pointer; padding:14px 18px; display:flex; align-items:center; justify-content:space-between; gap:10px}
 details.collapsible>summary::-webkit-details-marker{display:none}
 details.collapsible[open] .chev{transform:rotate(90deg)}
@@ -234,3 +234,4 @@ textarea.detail-long{max-height:500px;}
     .actions-col{justify-content:flex-end}
     .kv{grid-template-columns: 1fr}
 }
+
