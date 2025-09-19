@@ -146,7 +146,8 @@
     <!-- List (with FS split area) -->
     <section class="panel" style="margin-top:16px" aria-labelledby="listTitle" id="listPanel">
       <div style="display:flex; align-items:center; gap:10px; justify-content:space-between; border-bottom: 2px solid #e9e9e9;margin-bottom:6px">
-        <h2 id="listTitle" style="margin:0; font-size:18px">User Stories</h2>
+        <div><h2 id="listTitle" style="margin:0; font-size:18px">User Stories</h2>
+        <div class="muted" id="rowCount" style="margin-left:8px">0 items</div></div>
         <div style="display:flex; gap:8px; align-items:center">
           <label class="muted" for="sortField">Sort:</label>
           <select id="sortField" title="Select field to sort">
@@ -163,7 +164,6 @@
             <option value="updatedAt">Updated</option>
           </select>
           <button class="btn" type="button" id="sortDirBtn" title="Toggle sort direction">▲ Asc</button>
-          <div class="muted" id="rowCount" style="margin-left:8px">0 items</div>
           <button class="btn" id="fsTableBtn" type="button" title="Toggle full screen">Full Screen</button>
         </div>
       </div>
@@ -245,5 +245,6 @@
 
 </body>
 </html>
+
 
 
