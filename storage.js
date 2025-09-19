@@ -255,12 +255,7 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
     }
   }
 
-  // ---------- Public API (unchanged names) ----------
-  // NOTE: load*() remain synchronous (return current cache immediately).
-  // save*() will:
-  //   1) update cache immediately for snappy UI
-  //   2) write to Supabase in the background
-  //   3) Realtime will reconcile across tabs/clients
+
   
 
   const CroweStorage = {
@@ -317,14 +312,14 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 
       const now = Date.now();
       const flat = [];
-      for (const [story_id, list] of Object.entries(cache.commentsByStoryId)) {
+      for (const [storyId, list] of Object.entries(cache.commentsByStoryId)) {
         (list || []).forEach(c => {
           flat.push({
             id: c.id || uuid(),
-            story_id,
-            parent_id: c.parent_id ?? null,
-            author_name: c.author_name ?? null,
-            author_id: c.author_id ?? null,
+            storyId,
+            parentId: c.parentId ?? null,
+            authorName: c.authorName ?? null,
+            authorId: c.authorId ?? null,
             text: c.text ?? '',
             ts: c.ts ?? now
           });
@@ -348,14 +343,14 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
       const now = Date.now();
       const rows = cache.mentions.map(m => ({
         id: m.id || uuid(),
-        story_id: m.story_id,
+        storyId: m.storyId,
         reg: m.reg,
         field: m.field,
         value: m.value,
-        actor_id: m.actor_id ?? null,
-        actor_name: m.actor_name ?? null,
-        target_id: m.target_id ?? null,
-        target_name: m.target_name ?? null,
+        actorId: m.actorId ?? null,
+        actorName: m.actorName ?? null,
+        targetId: m.targetId ?? null,
+        targetName: m.targetName ?? null,
         ts: m.ts ?? now,
         unread: typeof m.unread === 'boolean' ? m.unread : true
       }));
@@ -376,16 +371,16 @@ src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2">
 
       const now = Date.now();
       const flat = [];
-      for (const [story_id, list] of Object.entries(cache.auditByStoryId)) {
+      for (const [storyId, list] of Object.entries(cache.auditByStoryId)) {
         (list || []).forEach(a => {
           flat.push({
             id: a.id || uuid(),
-            story_id,
+            storyId,
             ts: a.ts ?? now,
             field: a.field ?? '',
-            old_val: a.old_val ?? null,
-            new_val: a.new_val ?? null,
-            user_id: a.user_id ?? null
+            oldVal: a.oldVal ?? null,
+            newVal: a.newVal ?? null,
+            userId: a.userId ?? null
           });
         });
       }
