@@ -58,7 +58,7 @@ h1{font-size: clamp(20px, 3vw, 28px); margin:0; letter-spacing:.2px}
 
 /* Progress bar */
 .progress-wrap{margin-top:12px;}
-.progress{height:10px; width:100%; background:#ecebea; border:1px solid var(--border); border-radius:999px; overflow:hidden}
+.progress{height:10px; width:100%; background:#ecebea; border:1px solid var(--border); border-radius:999px; overflow:hidden; margin-top: 25px;}
 .progress .seg{height:100%; float:left}
 .seg.review{background:#5f6a7d}
 .seg.ready{background:#0b5cab}
@@ -234,4 +234,5 @@ textarea.detail-long{max-height:500px;}
     .actions-col{justify-content:flex-end}
     .kv{grid-template-columns: 1fr}
 }
+
 
