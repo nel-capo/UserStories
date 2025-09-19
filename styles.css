@@ -19,7 +19,7 @@
 html,body{height:100%}
 body{
     margin:0; font-family: ui-sans-serif, system-ui, -apple-system, Segoe UI, Roboto, Helvetica, Arial, "Apple Color Emoji","Segoe UI Emoji";
-    background: var(--bg);
+    background: oklch(42% 0.032 255);
     color:var(--text);
 }
 .container{max-width:1280px; margin:0 auto; padding:24px;}
@@ -234,4 +234,3 @@ textarea.detail-long{max-height:500px;}
     .actions-col{justify-content:flex-end}
     .kv{grid-template-columns: 1fr}
 }
-
