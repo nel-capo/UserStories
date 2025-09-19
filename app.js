@@ -441,58 +441,134 @@
         kv('Last Edited By',     `<span class="muted" id="detailEditor">${escapeHtml(st.lastEditedBy? displayName(CroweUsers.getUserById(st.lastEditedBy)):'—')}</span>`),
       ].join('');
     }
-    function debounce(fn, wait=1600){ let t=null; return (...a)=>{ clearTimeout(t); t=setTimeout(()=>fn(...a), wait); }; }
-      function wireDetailInline(id, container){
-        container.querySelectorAll('textarea.longtext').forEach(el => attachMentionAutocomplete(el));
-        const saveInline = debounce((field, value)=>{
-        const story = stories.find(x=>x.id===id); if (!story) return;
-  
+    // Drop-in replacement (paste over your existing functions)
+    function debounce(fn, wait = 1600) {
+      let t = null;
+      return (...a) => { clearTimeout(t); t = setTimeout(() => fn(...a), wait); };
+    }
+
+    function wireDetailInline(id, container){
+      // Helpers to keep typing seamless
+      const getFieldEl = (field) =>
+        container.querySelector('#' + field) ||
+        container.querySelector(`[data-field="${field}"]`);
+
+      const captureCaret = (el) => {
+        try {
+          if (!el) return null;
+          if (typeof el.selectionStart === 'number') {
+            return { start: el.selectionStart, end: el.selectionEnd, scrollTop: el.scrollTop ?? null };
+          }
+          return { start: null, end: null, scrollTop: null };
+        } catch { return null; }
+      };
+
+      const restoreCaret = (el, caret) => {
+        if (!el) return;
+        // Avoid scroll jumps
+        try { el.focus({ preventScroll: true }); } catch { el.focus(); }
+        if (caret && typeof el.selectionStart === 'number' && caret.start != null) {
+          try {
+            el.selectionStart = caret.start;
+            el.selectionEnd = caret.end;
+            if (caret.scrollTop != null) el.scrollTop = caret.scrollTop;
+          } catch {}
+        }
+      };
+
+      const scheduleRefocus = (field, caret) => {
+        // Wait a frame so any DOM updates (e.g., title/meta updates or re-render) land first
+        requestAnimationFrame(() => restoreCaret(getFieldEl(field), caret));
+      };
+
+      // Mentions (initial + after render)
+      container.querySelectorAll('textarea.longtext').forEach(el => attachMentionAutocomplete(el));
+
+      const saveInline = debounce((field, value, control) => {
+        // If the user is currently typing in this exact field, capture caret to restore later
+        const active = document.activeElement;
+        const isSameField = !!active && (
+          active === control ||
+          active?.id === field ||
+          active?.getAttribute?.('data-field') === field
+        );
+        const caret = isSameField ? captureCaret(active) : null;
+
+        const story = stories.find(x => x.id === id);
+        if (!story) return;
+
         const oldVal = story[field];
-        // Apply locally
-        if (field==='regressionItem'){
+
+        // Apply locally (never touch the control.value here—let the user keep typing)
+        if (field === 'regressionItem') {
           const num = Number(value);
-          if (Number.isNaN(num)){ showToast('Regression Item # must be a number.','error'); renderDetail(id); return; }
-          const dup = stories.find(x=>x.id!==id && x.regressionItem===num);
-          if (dup){ showToast(`Regression Item # ${num} already exists.`,'error'); renderDetail(id); return; }
+          if (Number.isNaN(num)) {
+            showToast('Regression Item # must be a number.','error');
+            renderDetail(id);
+            scheduleRefocus(field, caret);
+            return;
+          }
+          const dup = stories.find(x => x.id !== id && x.regressionItem === num);
+          if (dup) {
+            showToast(`Regression Item # ${num} already exists.`,'error');
+            renderDetail(id);
+            scheduleRefocus(field, caret);
+            return;
+          }
           story.regressionItem = num;
-        } else if (field==='loe'){
-          story.loe = (value===''||value==null) ? '' : Number(value);
-        } else if (field==='reportedDate'){
+        } else if (field === 'loe') {
+          story.loe = (value === '' || value == null) ? '' : Number(value);
+        } else if (field === 'reportedDate') {
           story.reportedDate = String(value);
         } else {
           story[field] = String(value);
         }
-  
+
         // Validate requireds when applicable
         const errs = validationErrors(story);
-        if (errs.length){ showToast(errs[0],'error'); renderDetail(id); return; }
-  
+        if (errs.length) {
+          showToast(errs[0],'error');
+          renderDetail(id);
+          scheduleRefocus(field, caret);
+          return;
+        }
+
         // Audit + editor
         story.updatedAt = Date.now();
         story.lastEditedBy = currentUser?.id || null;
-        addAudit({storyId: id, field, oldVal, newVal: story[field], userId: currentUser?.id || null});
-  
+        addAudit({ storyId: id, field, oldVal, newVal: story[field], userId: currentUser?.id || null });
+
         // Mentions from the new value (if any)
-        const targets = extractMentions(String(value||''));
-        if (targets.length){
-          addMention({story, field, value, actor: currentUser, targets});
+        const targets = extractMentions(String(value || ''));
+        if (targets.length) {
+          addMention({ story, field, value, actor: currentUser, targets });
         }
-  
-        saveStoriesMerged(); buildSummary(); renderList();
-        // Reflect header + meta
+
+        // Persist + update peripheral UI (do not touch the input itself)
+        saveStoriesMerged();
+        buildSummary();
+        renderList();
+
+        // Reflect header + meta only (localized updates)
         els.detailTitle.textContent = `User Story — Reg. #${story.regressionItem}`;
-        const upd = container.querySelector('#detailUpdated'); if (upd) upd.textContent=new Date(story.updatedAt).toLocaleString();
-        const ed  = container.querySelector('#detailEditor'); if (ed) ed.textContent = story.lastEditedBy? displayName(CroweUsers.getUserById(story.lastEditedBy)):'—';
+        const upd = container.querySelector('#detailUpdated'); if (upd) upd.textContent = new Date(story.updatedAt).toLocaleString();
+        const ed  = container.querySelector('#detailEditor'); if (ed)  ed.textContent = story.lastEditedBy ? displayName(CroweUsers.getUserById(story.lastEditedBy)) : '—';
+
+        // Restore focus/caret seamlessly (even if DOM re-rendered)
+        scheduleRefocus(field, caret);
       }, 1650);
-  
-      container.querySelectorAll('[data-field]').forEach(control=>{
+
+      // Wire inputs/selects
+      container.querySelectorAll('[data-field]').forEach(control => {
         const field = control.getAttribute('data-field');
-        const ev = control.tagName==='SELECT' ? 'change' : 'input';
-        control.addEventListener(ev, ()=> saveInline(field, control.value));
+        const ev = control.tagName === 'SELECT' ? 'change' : 'input';
+        control.addEventListener(ev, () => saveInline(field, control.value, control));
       });
-        // In your detail renderer (after injecting the form HTML), run:
-        container.querySelectorAll('textarea.longtext').forEach(el => attachMentionAutocomplete(el));
+
+      // Mentions again for any long textareas that appear later
+      container.querySelectorAll('textarea.longtext').forEach(el => attachMentionAutocomplete(el));
     }
+
     function renderDetailBody(id, container){
       const st = stories.find(x=>x.id===id); if (!st) return;
       container.innerHTML = buildDetailForm(st);
@@ -525,6 +601,7 @@
         renderDetail(id);
       } else {
         els.detailView.style.display='block';
+  
         els.createPanel.style.display='none';
         renderDetail(id);
       }
@@ -586,26 +663,64 @@
   
     // ----- Notifications -----
     function updateNotifyUI(){
-      const mineUnread = mentions.filter(m=> m.targetId===currentUser?.id && m.unread);
-      els.notifyDot.textContent = String(mineUnread.length);
-      els.notifyDot.style.display = mineUnread.length ? 'block' : 'none';
-  
-      const list = mentions.slice(0,40).map(m=>{
-        const you = m.targetId===currentUser?.id ? ' (you)' : '';
+      const userId   = currentUser?.id || null;
+      const deviceId = window.currentDeviceId || window.deviceId || localStorage.getItem('deviceId') || 'default';
+    
+      // If not signed in, clear UI safely
+      if (!userId) {
+        if (els.notifyDot) { els.notifyDot.textContent = '0'; els.notifyDot.style.display = 'none'; }
+        if (els.notifyList) {
+          els.notifyList.innerHTML = `<div class="notify-item">Sign in to see your @tags.</div>`;
+        }
+        return;
+      }
+    
+      // Helpers
+      const isMine = (m) => m && m.targetId === userId;
+      const isUnreadOnThisDevice = (m) => isMine(m) && (m.unread !== false) && !(m.readBy && m.readBy[deviceId]);
+    
+      // Filter to only *my* mentions
+      const mine       = (mentions || []).filter(isMine).sort((a,b)=> (b.ts||0)-(a.ts||0));
+      const mineUnread = (mentions || []).filter(isUnreadOnThisDevice);
+    
+      // Dot: only my unread on this device
+      if (els.notifyDot) {
+        els.notifyDot.textContent = String(mineUnread.length);
+        els.notifyDot.style.display = mineUnread.length ? 'block' : 'none';
+      }
+    
+      // List: only my recent tags
+      const list = mine.slice(0, 40).map(m=>{
         return `<div class="notify-item" data-mid="${m.id}">
-          <div><strong>@${escapeHtml(m.targetName)}</strong>${you} tagged by <strong>${escapeHtml(m.actorName)}</strong></div>
-          <div class="meta">Reg #${m.reg} • ${escapeHtml(m.field)} → <span title="${escapeHtml(m.value)}">${escapeHtml(m.value)}</span> • ${new Date(m.ts).toLocaleString()}</div>
+          <div><strong>@${escapeHtml(m.targetName || '')}</strong> tagged by <strong>${escapeHtml(m.actorName || '')}</strong></div>
+          <div class="meta">Reg #${m.reg} • ${escapeHtml(m.field || '')} → <span title="${escapeHtml(m.value || '')}">${escapeHtml(m.value || '')}</span> • ${new Date(m.ts).toLocaleString()}</div>
         </div>`;
-      }).join('') || `<div class="notify-item">No recent @tags.</div>`;
-      els.notifyList.innerHTML = `
-        <div style="padding:10px 12px; border-bottom:1px solid #eee; font-weight:700; color:#032d60">Recent @tags</div>
-        ${list}
-        <div style="padding:8px; text-align:right"><button class="btn" id="markReadBtn" type="button">Mark mine read</button></div>
-      `;
-      $('#markReadBtn')?.addEventListener('click', ()=>{
-        mentions.forEach(m=>{ if (m.targetId===currentUser?.id) m.unread=false; });
-        saveMentions(); updateNotifyUI();
-      });
+      }).join('') || `<div class="notify-item">No recent @tags for you.</div>`;
+    
+      if (els.notifyList) {
+        els.notifyList.innerHTML = `
+          <div style="padding:10px 12px; border-bottom:1px solid #eee; font-weight:700; color:#032d60">Your @tags</div>
+          ${list}
+          <div style="padding:8px; text-align:right">
+            <button class="btn" id="markReadBtn" type="button">Mark mine read</button>
+          </div>
+        `;
+      }
+    
+      // Plain DOM (no jQuery) + per-device read state
+      const btn = document.getElementById('markReadBtn');
+      if (btn) {
+        btn.addEventListener('click', ()=>{
+          (mentions || []).forEach(m=>{
+            if (!isMine(m)) return;
+            m.unread = false;                           
+            m.readBy = m.readBy || {};                 
+            m.readBy[deviceId] = true;                 
+          });
+          saveMentions();
+          updateNotifyUI();
+        });
+      }
     }
   
     // ----- Hover scroll & FS -----
@@ -1053,4 +1168,3 @@ function attachMentionAutocomplete(textarea){
 // For comments box:
 const cmt = document.getElementById('commentText');
 if (cmt) attachMentionAutocomplete(cmt);
-
